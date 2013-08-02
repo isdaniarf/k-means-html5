@@ -1,0 +1,195 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>
+      HTML 5 test
+    </title>
+    <style>
+      html {
+        margin:0;
+        padding:0;
+        height:100%;
+        font-family: Helvetica, Arial;
+      }
+      h2 {
+        font-size: 180%;
+        margin: .1em 0 .1em 0;
+        text-align: center;
+        text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+        font-variant: small-caps;
+        font-family: Arial;
+      }
+      .text{
+        font-family: Arial;
+        margin: 1em;
+        text-align: center;
+      }
+      #myCanvas {
+        border: 1px solid #9C9898;
+      }
+    </style>
+    <script>
+      var THRESHOLD = 5;
+      var N = 100;
+      var K = 3;
+      var p;
+      var centroid;
+      var canvas;
+
+      function Point(x, y){
+        this.X = x;
+        this.Y = y;
+        this.cluster = 0;
+        this.color = "white";
+      }
+
+      function nearestCluster(a, centroid){
+        var close = 0;
+        var temp = distance(a, centroid[0]);
+        for(i=0; i<K; i++){
+          if(distance(a, centroid[i]) < temp){
+            close = i;
+            temp = distance(a, centroid[i]);
+          }
+        }
+        return close;
+      }
+
+      function isEqual(a, b, THRESHOLD){
+        return (distance(a, b) <= THRESHOLD) ? true : false;
+      }
+
+      function isConverge(a, b, THRESHOLD){
+        for(i=0; i<K; i++){
+          if(!isEqual(a[i],b[i],THRESHOLD)) return false;
+        }
+        return true;
+      }
+
+      function genColor(){
+        return 'rgba('+(Math.floor(Math.random()*255)+1)+','+(Math.floor(Math.random()*255)+1)+','+(Math.floor(Math.random()*255)+1)+', 1)';
+      }
+
+      function distance(a, b){
+        return Math.sqrt(Math.pow(a.X-b.X, 2) + Math.pow(a.Y-b.Y, 2));
+      }
+
+      function init(){
+        for(i=0; i<N; i++){
+            p[i] = new Point(Math.floor((Math.random()*canvas.width)+1), Math.floor((Math.random()*canvas.height)+1));
+        }
+      }
+
+      function compute(){
+        var clusterSum;
+        var newCentroid;
+        var clusterSize;
+
+        for(i=0; i<K; i++){
+          //centroid[i] = p[(Math.floor(Math.random()*N)+1)];
+          centroid[i] = p[i];
+          centroid[i].color = genColor();
+        }
+        
+        while(true){
+          clusterSize = new Array(K);
+          clusterSum = new Array(K);
+          for(i=0; i<K; i++){
+            clusterSize[i] = 0;
+            clusterSum[i] = new Array(2);
+            for(r=0;r<2;r++) clusterSum[i][r] = 0;
+          }
+          newCentroid = new Array(K);
+          for(f=0;f<N;f++) {
+            p[f].cluster = nearestCluster(p[f], centroid);
+            clusterSize[p[f].cluster]++;
+            clusterSum[p[f].cluster][0] += p[f].X;
+            clusterSum[p[f].cluster][1] += p[f].Y;
+          }
+          for(l=0; l<K; l++){
+            newCentroid[l] = new Point(0,0);
+            newCentroid[l].color = centroid[l].color;
+            newCentroid[l].X = Math.floor(clusterSum[l][0]/clusterSize[l]);
+            newCentroid[l].Y = Math.floor(clusterSum[l][1]/clusterSize[l]);
+          }
+          if(isConverge(centroid, newCentroid, THRESHOLD)) break;
+          centroid = newCentroid;
+        }
+      }
+
+      function draw(){
+        try{
+        canvas = document.getElementById("myCanvas");
+        var context = canvas.getContext("2d");
+
+        centroid = new Array(K);
+        p = new Array(N);
+
+        init();
+        compute();
+
+        var radius = 3;
+        var startAngle = 0;
+        var endAngle = Math.PI*2;
+        var counterClockwise = false;
+
+        context.fillStyle = "black";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        for(i=0; i<N; i++){
+          context.beginPath();
+          context.arc(p[i].X, p[i].Y , radius, startAngle, endAngle, counterClockwise);
+          context.lineWidth = 0.3;
+          context.fillStyle = centroid[p[i].cluster].color;
+          //context.fillText((i+1)+'', p[i].X, p[i].Y);
+          context.fill();
+          context.strokeStyle = "white";
+          context.stroke();
+        }
+
+        for(i=0; i<K; i++){
+          context.lineWidth = 0.3;
+          context.fillStyle = centroid[i].color;
+          context.font = "8pt Arial";
+          context.beginPath()
+          context.rect(centroid[i].X, centroid[i].Y , 12, 12);
+          context.fill();
+          context.fillStyle = "black";
+          context.fillText((i+1)+'', centroid[i].X + 3, centroid[i].Y + 10);
+          context.strokeStyle = "white";
+          context.stroke();
+        }
+        } catch(e) {
+        alert('An error has occurred: '+e.message);
+        }
+      }
+
+      window.onload = function() {
+        draw();
+
+        document.getElementById('redraw').addEventListener('click', function() {
+          var pp = document.getElementsByName('points')[0].value;
+          var kk = document.getElementsByName('centroids')[0].value;
+          if((pp > 0 && kk > 0) && (parseInt(pp) > parseInt(kk))) {
+            N = pp;
+            K = kk;
+            draw();
+          } else {
+            alert("p must be larger than k and both a positive number")
+          }
+        });
+      };
+
+    </script>
+  </head>
+  <body>
+    <center>
+    <h2><font face="Arial">K-Means Clustering Demo</font></h2><br>
+    p = <input type="text" name="points" /> &nbsp
+    k = <input type="text" name="centroids" />
+    <input type="button" id="redraw" value="redraw">
+     <br><br>
+    <canvas id="myCanvas" width="800" height="480"></canvas>
+  </center>
+  </body>
+</html>
